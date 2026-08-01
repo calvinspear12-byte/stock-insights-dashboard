@@ -1,0 +1,42 @@
+Paste everything below into ChatGPT. It will return three JavaScript blocks to paste into index.html
+(replace const CANDS = [...]; then const UPCOMING = [...]; then const ENTRY = {...};).
+
+----------------------------------------------------------------------
+You are refreshing the data for a personal stock-screening dashboard. Do genuine, current
+research with your web browsing and return updated content. Rules:
+
+- This is a screening/research tool, NOT financial advice. No profit promises, no price
+  targets stated as fact, no buy/sell timing.
+- Verify every number against a real current source. If you cannot verify a figure, omit it.
+- Screen the WHOLE market from several angles (top gainers, analyst upgrades, undervalued
+  and dividend/value names, small and mid-cap momentum, sector leaders). Do NOT just reuse
+  famous large-cap tech. Aim for 8+ distinct sectors and a range of market caps.
+
+Return ONLY these three JavaScript blocks, nothing else, in this exact shape (same field names):
+
+const CANDS = [
+  {name:"Company",ticker:"TICK",track:"growth",horizon:"long",
+   horizonNote:"one line on why long-term vs short/tactical",
+   thesis:"one-line durable-growth or quality thesis (why it is a good business, not just that it is climbing)",
+   revGrowth:20,fwdPE:25,roe:null,divYield:null,price:null,priceLabel:"n/a this run",
+   metrics:[["label","value"],["label","value"],["label","value"],["label","value"]],
+   risk:"the single biggest risk"},
+  // about 10 total: ~5 track:"growth" and ~5 track:"quality". Quality must include genuine
+  // non-tech income/value (telecom, energy midstream, REIT, staples, financials, healthcare).
+];
+
+const UPCOMING = [
+  {name:"Company",ticker:"TICK",track:"emerging",horizon:"short",
+   horizonNote:"...",thesis:"...",revGrowth:40,fwdPE:null,roe:null,divYield:null,
+   price:null,priceLabel:"...",metrics:[["label","value"]],risk:"..."},
+  // about 4 smaller emerging names, include at least one small/mid cap and a non-software sector.
+];
+
+const ENTRY = {
+  TICK:"one line valuation-based where-to-buy-if-at-all stance (attractively priced / fair / rich / wait for a pullback)",
+  // one entry per ticker used above in CANDS.
+};
+
+Use track "growth" or "quality" in CANDS, "emerging" in UPCOMING. horizon is "long" or "short".
+revGrowth/fwdPE/roe/divYield are numbers or null. Keep it valid JavaScript.
+----------------------------------------------------------------------
