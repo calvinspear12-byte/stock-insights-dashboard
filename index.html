@@ -256,8 +256,8 @@ footer.foot{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0
       <div class="sub">Genuine multi-sector screen (semis, healthcare, income, energy, defense, and more), an up-and-coming growth watch, a Discover-by-theme tool, and your own watchlist. Two transparent screens (high-growth, durable quality) plus long vs short hold labels. A research tool, not advice.</div>
     </div>
     <div class="asof">
-      <div><b>Scan run:</b> <span id="rundate">Fri, Jul 31 2026</span></div>
-      <div><b>Data as of:</b> Jul 30 2026 close + Jul 31 intraday</div>
+      <div><b>Last refreshed:</b> <span id="rundate">Aug 1 2026</span></div>
+      <div><b>Prices:</b> live during market hours &middot; fundamentals from latest reported periods</div>
       <div>Free web quotes may lag 15+ min</div>
       <div id="liveStamp" style="color:var(--pos);font-weight:600;display:none;margin-top:3px;"></div>
     </div>
@@ -290,9 +290,9 @@ footer.foot{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0
   <!-- ============ TAB 1: MARKET SCAN ============ -->
   <div class="page active" id="page-scan">
     <section class="kpis">
-      <div class="kpi k1"><div class="lab">S&amp;P 500</div><div class="val" id="kpiSPX">7,437.64</div><div class="chg pos" id="kpiSPXchg">+1.7% &#9650;</div><div class="foot">Jul 30 close &middot; Jul 31 ~+0.5% intraday</div></div>
-      <div class="kpi k2"><div class="lab">Nasdaq Composite</div><div class="val" id="kpiNAS">25,122.18</div><div class="chg pos" id="kpiNASchg">+2.8% &#9650;</div><div class="foot">Jul 30 close &middot; Jul 31 ~+0.9% intraday</div></div>
-      <div class="kpi k3"><div class="lab">Dow Jones</div><div class="val" id="kpiDOW">52,208.06</div><div class="chg pos" id="kpiDOWchg">+1.2% &#9650;</div><div class="foot">+613.92 pts &middot; Jul 31 ~+0.4% intraday</div></div>
+      <div class="kpi k1"><div class="lab">S&amp;P 500</div><div class="val" id="kpiSPX">7,437.64</div><div class="chg pos" id="kpiSPXchg">+1.7% &#9650;</div><div class="foot">500 US large caps &middot; updates live</div></div>
+      <div class="kpi k2"><div class="lab">Nasdaq Composite</div><div class="val" id="kpiNAS">25,122.18</div><div class="chg pos" id="kpiNASchg">+2.8% &#9650;</div><div class="foot">Tech-heavy index &middot; updates live</div></div>
+      <div class="kpi k3"><div class="lab">Dow Jones</div><div class="val" id="kpiDOW">52,208.06</div><div class="chg pos" id="kpiDOWchg">+1.2% &#9650;</div><div class="foot">30 blue chips &middot; updates live</div></div>
       <div class="kpi k4"><div class="lab">Fed Funds Rate</div><div class="val">On hold</div><div class="chg neu">3 members dissented for a hike</div><div class="foot">Jul 2026 FOMC: held steady</div></div>
     </section>
 
@@ -339,6 +339,7 @@ footer.foot{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0
     <div class="card tablecard">
       <h3>Candidate comparison</h3>
       <div class="hint">Click a column header to sort. Star a stock to add it to your Watchlist tab.</div>
+      <div id="kronosNote" class="flag warn" style="display:none;margin-bottom:12px;"></div>
       <table><thead><tr>
         <th onclick="sortBy('name')">Company</th><th onclick="sortBy('track')">Screen</th>
         <th onclick="sortBy('horizon')" title="Suitability under this screen: a long-term hold (durable) or a short-term / tactical position (higher risk). Not a buy or sell call.">Hold</th><th onclick="sortBy('revGrowth')" title="How fast the company's sales grew versus a year ago. Higher means faster-growing.">Rev growth</th>
@@ -490,7 +491,7 @@ footer.foot{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0
     <div class="grid2b">
       <div class="card tablecard">
         <h3>Selected names</h3><div class="hint">2-year return, Kronos ~1mo forecast, and screen hold label</div>
-        <table><thead><tr><th>Company</th><th>2yr return</th><th>Kronos ~1mo</th><th>Hold</th></tr></thead><tbody id="cmpTable"></tbody></table>
+        <table><thead><tr><th>Company</th><th title="Price return over the history shown (up to 2 years; the small figure is the actual span).">Return</th><th>Kronos ~1mo</th><th>Hold</th></tr></thead><tbody id="cmpTable"></tbody></table>
       </div>
       <div class="card">
         <h3>Context &amp; considerations</h3>
@@ -1089,6 +1090,7 @@ function normSeries(t,labels){
   return labels.map(dt=>{const v=m[dt];if(v==null)return null;if(base==null)base=v;return +(v/base*100).toFixed(1);});
 }
 function ret2y(t){const s=HISTORY.series[t];if(!s||s.data.length<2)return null;return (s.data[s.data.length-1][1]/s.data[0][1]-1)*100;}
+function cmpSpanYears(t){const s=HISTORY.series[t];if(!s||s.data.length<2)return null;var a=new Date(s.data[0][0]),b=new Date(s.data[s.data.length-1][0]);return ((b-a)/(365.25*864e5)).toFixed(1);}
 function buildCmpChart(){
   const el=document.getElementById("cmpChart");if(!el)return;const labels=cmpLabels();if(!labels.length)return;
   const datasets=cmpSel.map((t,i)=>({label:t,data:normSeries(t,labels),borderColor:CMP_COLORS[i%CMP_COLORS.length],backgroundColor:"transparent",borderWidth:2,borderDash:(t==='SPY'||t==='QQQ')?[5,4]:[],pointRadius:0,tension:.2,spanGaps:true}));
@@ -1105,7 +1107,7 @@ function renderCmpTable(){
     const nm=s?s.name:(c?c.name:t);
     const hold=c?`<span class="pill ${c.horizon}">${c.horizon==='long'?'LONG':'SHORT'}</span>`:((t==='SPY'||t==='QQQ')?'<span class="pill" style="background:var(--panel-2);color:var(--faint)">INDEX</span>':'&ndash;');
     return `<tr><td><b>${nm}</b><span class="tks">${t}</span></td>
-      <td class="num ${r>0?'pos':'neg'}">${r==null?'&ndash;':(r>0?'+':'')+r.toFixed(0)+'%'}</td>
+      <td class="num ${r>0?'pos':'neg'}">${r==null?'&ndash;':(r>0?'+':'')+r.toFixed(0)+'%'}${(function(){var y=cmpSpanYears(t);return y?' <span style="color:var(--faint);font-size:10px">'+y+'y</span>':'';})()}</td>
       <td>${k?'<span class="kcol '+k.direction+'">'+(k.pct_change>0?'+':'')+k.pct_change+'%</span>':'<span style="color:var(--faint)">&ndash;</span>'}</td>
       <td>${hold}</td></tr>`;}).join("");
 }
@@ -1113,7 +1115,7 @@ function renderCmpNote(){
   const box=document.getElementById("cmpNote");if(!box)return;
   const roster=cmpSel.filter(t=>byTicker(t));const parts=[];
   const rets=cmpSel.map(t=>[t,ret2y(t)]).filter(x=>x[1]!=null).sort((a,b)=>b[1]-a[1]);
-  if(rets.length>1)parts.push("Over two years, <b>"+rets[0][0]+"</b> led ("+(rets[0][1]>0?'+':'')+rets[0][1].toFixed(0)+"%) and <b>"+rets[rets.length-1][0]+"</b> lagged ("+(rets[rets.length-1][1]>0?'+':'')+rets[rets.length-1][1].toFixed(0)+"%).");
+  if(rets.length>1)parts.push("Over the period shown, <b>"+rets[0][0]+"</b> led ("+(rets[0][1]>0?'+':'')+rets[0][1].toFixed(0)+"%) and <b>"+rets[rets.length-1][0]+"</b> lagged ("+(rets[rets.length-1][1]>0?'+':'')+rets[rets.length-1][1].toFixed(0)+"%). Note that not every line covers the full two years.");
   const spy=ret2y("SPY");
   if(spy!=null&&roster.length){const beat=roster.filter(t=>ret2y(t)>spy).length;parts.push(beat+" of "+roster.length+" selected stocks beat the S&amp;P 500 (+"+spy.toFixed(0)+"%) over the period. Beating the index is the bar any single stock has to clear to be worth the extra risk.");}
   const kdown=cmpSel.filter(t=>kFor(t)&&kFor(t).direction==='down').length;
@@ -1142,11 +1144,20 @@ function fetchLive(){
   fetch("prices.json?t="+Date.now()).then(r=>r.ok?r.json():null).then(d=>{if(d){LIVE=d;applyLive();}}).catch(()=>{});
 }
 
+function updateKronosNote(){
+  const ks=Object.values(KRONOS.forecasts||{});const el=document.getElementById("kronosNote");if(!el)return;
+  if(!ks.length){el.style.display="none";return;}
+  const down=ks.filter(k=>k.direction==='down').length,up=ks.filter(k=>k.direction==='up').length,n=ks.length;
+  let lean="mixed";if(down>=n*0.6)lean="cautious, leaning lower";else if(up>=n*0.6)lean="optimistic, leaning higher";
+  el.innerHTML="&#9888;<span><b>Kronos model note:</b> the experimental forecast currently reads <b>"+lean+"</b> ("+down+" of "+n+" names lower, "+up+" higher over ~1 month). This model skews bearish and is frequently wrong, so treat it as a weak uncertainty gauge, not a market call. The range beside each badge shows how little conviction there is.</span>";
+  el.style.display="flex";
+}
+
 /* ---------- init ---------- */
 document.getElementById("upCnt").textContent=UPCOMING.length;
 saveWL();renderCards();renderTable();renderWL();buildCharts();
 fillAddSelects();renderPlan();
-setRisk("Moderate");renderDiscover();renderCompare();
+setRisk("Moderate");renderDiscover();renderCompare();updateKronosNote();
 fetchLive();setInterval(fetchLive,300000);
 </script>
 </body>
