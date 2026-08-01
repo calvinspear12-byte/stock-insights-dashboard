@@ -223,6 +223,16 @@ tbody td:first-child .tks{color:var(--faint);font-size:11px;margin-left:5px;}
 .risk-btn[data-risk="Aggressive"].active{background:var(--short);color:#241a02;}
 .risk-desc{font-size:12px;color:var(--muted);margin-top:9px;}
 
+/* kronos forecast */
+.kronos{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);}
+.kbadge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:6px;letter-spacing:.2px;}
+.kbadge.up{background:rgba(52,211,153,.16);color:var(--pos);}
+.kbadge.down{background:rgba(248,113,113,.16);color:var(--neg);}
+.kbadge.flat{background:rgba(148,163,184,.16);color:var(--muted);}
+.ktxt{font-size:10.5px;color:var(--faint);}
+.kcol{font-weight:700;}
+.kcol.up{color:var(--pos);}.kcol.down{color:var(--neg);}.kcol.flat{color:var(--muted);}
+
 .disc{background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.22);border-radius:var(--radius);padding:14px 18px;font-size:12.5px;color:var(--muted);margin:16px 0;}
 .disc b{color:var(--warn);}
 footer.foot{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0 6px;line-height:1.7;}
@@ -322,9 +332,10 @@ footer.foot{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0
       <div class="hint">Click a column header to sort. Star a stock to add it to your Watchlist tab.</div>
       <table><thead><tr>
         <th onclick="sortBy('name')">Company</th><th onclick="sortBy('track')">Screen</th>
-        <th onclick="sortBy('horizon')">Hold</th><th onclick="sortBy('revGrowth')">Rev growth</th>
-        <th onclick="sortBy('fwdPE')">Fwd P/E</th><th onclick="sortBy('roe')">ROE / ROIC</th>
-        <th onclick="sortBy('divYield')">Div yield</th><th onclick="sortBy('price')">Last price</th>
+        <th onclick="sortBy('horizon')" title="Suitability under this screen: a long-term hold (durable) or a short-term / tactical position (higher risk). Not a buy or sell call.">Hold</th><th onclick="sortBy('revGrowth')" title="How fast the company's sales grew versus a year ago. Higher means faster-growing.">Rev growth</th>
+        <th onclick="sortBy('fwdPE')" title="Forward price-to-earnings: the stock price divided by expected next-year profit per share. Lower is cheaper relative to earnings; very high means the market expects a lot of growth.">Fwd P/E</th><th onclick="sortBy('roe')" title="Return on equity / invested capital: how much profit the company makes on the money invested in it. Higher and steady is a sign of quality.">ROE / ROIC</th>
+        <th onclick="sortBy('divYield')" title="Annual dividend as a percent of the share price: the cash income a share pays you per year.">Div yield</th><th onclick="sortBy('price')" title="Most recent share price we could verify this run (free quotes may be delayed).">Last price</th>
+        <th title="Kronos ML model forecast of the ~1-month close. Experimental, not advice.">Kronos ~1mo</th>
       </tr></thead><tbody id="tbody"></tbody></table>
     </div>
   </div>
@@ -410,6 +421,7 @@ footer.foot{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0
     <div class="card" style="margin-bottom:var(--gap);">
       <h3>Portfolio planner</h3>
       <div class="hint">Model a client allocation. Default: a $15,000 portfolio split 70% into a durable core sleeve and 30% into smaller, higher-potential growth names. Dollar figures are planning estimates; confirm live prices at your brokerage before trading. A planning tool, not advice.</div>
+      <div class="flag ok" style="margin-top:12px;">&#9432;<span><b>New to investing? Read this first.</b> For most first-time investors, a single low-cost broad-market index fund (for example an S&amp;P 500 or total-market ETF) is the sensible default, and picking individual stocks like this tool does is going <i>beyond</i> that. If you do buy individual names, spreading purchases over months (dollar-cost averaging) beats trying to time one perfect entry, and keeping any one stock to a small slice limits the damage if you are wrong.</span></div>
       <div class="plan-settings">
         <div class="wl-field"><label>Amount to invest ($)</label><input id="planTotal" class="wl-search" type="number" min="0" step="100" value="15000" onchange="onPlanSettings()"></div>
         <div class="wl-field"><label>Core (safe) %</label><input id="planCore" class="wl-search" type="number" min="0" max="100" step="5" value="70" onchange="onPlanSettings()"></div>
@@ -458,6 +470,7 @@ footer.foot{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0
 
   <div class="disc">
     <b>This is a screen output, not financial advice.</b> No screen can identify the "best" stocks or guarantee a profit in advance. Long vs short labels reflect suitability under the screen's criteria (moat durability, valuation, cyclicality), not a prediction. Verify every figure and do your own diligence before acting.
+    <br><br><b>About the Kronos forecast:</b> the "Kronos" figures are output from an experimental open-source AI model (Kronos, a foundation model for candlestick data) that projects a possible ~1-month price path from recent history. It is pattern extrapolation, not knowledge of the future: it ignores fundamentals, news, and earnings, and is often wrong. Treat it as one weak, quantitative signal among many, never as a buy or sell instruction.
   </div>
 
   <footer class="foot">
@@ -585,6 +598,18 @@ const ALL = [...CANDS, ...UPCOMING];
 let discovered=[];
 const byTicker = t => ALL.find(x=>x.ticker===t) || discovered.find(x=>x.ticker===t);
 
+// Kronos forecasts (experimental ML model output; injected by dashboard_forecast.py). NOT advice.
+const KRONOS = /*KRONOS_START*/{"generated":"2026-08-01","model":"Kronos-small","horizon_days":21,"sample_count":5,"forecasts":{"MU":{"last_close":823.03,"pred_close":762.03,"pct_change":-7.4,"direction":"down","band_low":-10.6,"band_high":13.2,"as_of":"2026-07-31"},"MRVL":{"last_close":187.56,"pred_close":173.23,"pct_change":-7.6,"direction":"down","band_low":-13.6,"band_high":12.1,"as_of":"2026-07-31"},"VRT":{"last_close":241.57,"pred_close":233.48,"pct_change":-3.3,"direction":"down","band_low":-9.6,"band_high":6.2,"as_of":"2026-07-31"},"LLY":{"last_close":1148.84,"pred_close":1071.62,"pct_change":-6.7,"direction":"down","band_low":-9.6,"band_high":0.7,"as_of":"2026-07-31"},"CRWD":{"last_close":190.86,"pred_close":152.38,"pct_change":-20.2,"direction":"down","band_low":-22.9,"band_high":0.5,"as_of":"2026-07-31"},"COST":{"last_close":951.89,"pred_close":942.43,"pct_change":-1.0,"direction":"flat","band_low":-5.1,"band_high":-0.2,"as_of":"2026-07-31"},"V":{"last_close":366.13,"pred_close":349.16,"pct_change":-4.6,"direction":"down","band_low":-6.7,"band_high":1.4,"as_of":"2026-07-31"},"VZ":{"last_close":46.81,"pred_close":44.46,"pct_change":-5.0,"direction":"down","band_low":-7.7,"band_high":0.9,"as_of":"2026-07-31"},"EPD":{"last_close":38.05,"pred_close":37.41,"pct_change":-1.7,"direction":"down","band_low":-3.4,"band_high":3.7,"as_of":"2026-07-31"},"DOC":{"last_close":21.83,"pred_close":19.07,"pct_change":-12.6,"direction":"down","band_low":-14.1,"band_high":1.6,"as_of":"2026-07-31"},"KTOS":{"last_close":46.6,"pred_close":49.1,"pct_change":5.4,"direction":"up","band_low":-1.6,"band_high":10.9,"as_of":"2026-07-31"},"DDOG":{"last_close":267.97,"pred_close":203.11,"pct_change":-24.2,"direction":"down","band_low":-29.5,"band_high":3.7,"as_of":"2026-07-31"},"SOUN":{"last_close":6.13,"pred_close":5.84,"pct_change":-4.7,"direction":"down","band_low":-10.8,"band_high":0.8,"as_of":"2026-07-31"},"SNDK":{"last_close":1214.83,"pred_close":1096.5,"pct_change":-9.7,"direction":"down","band_low":-17.2,"band_high":19.5,"as_of":"2026-07-31"}}}/*KRONOS_END*/;
+const kFor = t => (KRONOS.forecasts||{})[t];
+function kronosHTML(ticker){
+  const k=kFor(ticker); if(!k) return "";
+  const cls=k.direction==='up'?'up':k.direction==='down'?'down':'flat';
+  const sign=k.pct_change>0?'+':'';
+  return `<div class="kronos" title="Kronos foundation model forecast of the ~${KRONOS.horizon_days||21}-day close, from candlestick history. Experimental, not advice.">`
+    +`<span class="kbadge ${cls}">Kronos ${sign}${k.pct_change}%</span>`
+    +`<span class="ktxt">~1mo model forecast &middot; range ${k.band_low}% to ${k.band_high}%</span></div>`;
+}
+
 let currentTrack="all", sortState={key:null,dir:-1};
 
 /* ---------- tabs ---------- */
@@ -610,6 +635,7 @@ function cardHTML(c,cls){
     <div class="metrics">${c.metrics.map(m=>`<div class="m"><div class="ml">${m[0]}</div><div class="mv">${m[1]}</div></div>`).join("")}</div>
     <div class="horizon"><b>${c.horizon==='long'?'Long-term hold':'Short-term / tactical'}:</b> ${c.horizonNote}</div>
     <div class="risk"><b>Key risk:</b> ${c.risk}</div>
+    ${kronosHTML(c.ticker)}
     <div class="cand-actions"><button class="dd-btn" onclick="deepDive('${c.ticker}')">&#128269; Deep dive</button></div>
   </div>`;
 }
@@ -637,6 +663,7 @@ function renderTable(){
     <td>${c.roe==null?'&ndash;':c.roe+'%'}</td>
     <td>${c.divYield==null?'&ndash;':c.divYield+'%'}</td>
     <td>${c.price==null?'<span style="color:var(--faint)">'+(c.priceLabel||'&ndash;')+'</span>':'$'+c.price}</td>
+    <td>${(function(){var k=kFor(c.ticker);return k?'<span class="kcol '+k.direction+'">'+(k.pct_change>0?'+':'')+k.pct_change+'%</span>':'<span style="color:var(--faint)">&ndash;</span>';})()}</td>
   </tr>`).join("");
 }
 function sortBy(k){if(sortState.key===k)sortState.dir*=-1;else{sortState.key=k;sortState.dir=-1;}renderTable();}
