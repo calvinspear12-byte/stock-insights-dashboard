@@ -259,6 +259,7 @@ footer.foot{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0
       <div><b>Scan run:</b> <span id="rundate">Fri, Jul 31 2026</span></div>
       <div><b>Data as of:</b> Jul 30 2026 close + Jul 31 intraday</div>
       <div>Free web quotes may lag 15+ min</div>
+      <div id="liveStamp" style="color:var(--pos);font-weight:600;display:none;margin-top:3px;"></div>
     </div>
   </header>
 
@@ -289,9 +290,9 @@ footer.foot{color:var(--faint);font-size:11.5px;text-align:center;padding:14px 0
   <!-- ============ TAB 1: MARKET SCAN ============ -->
   <div class="page active" id="page-scan">
     <section class="kpis">
-      <div class="kpi k1"><div class="lab">S&amp;P 500</div><div class="val">7,437.64</div><div class="chg pos">+1.7% &#9650;</div><div class="foot">Jul 30 close &middot; Jul 31 ~+0.5% intraday</div></div>
-      <div class="kpi k2"><div class="lab">Nasdaq Composite</div><div class="val">25,122.18</div><div class="chg pos">+2.8% &#9650;</div><div class="foot">Jul 30 close &middot; Jul 31 ~+0.9% intraday</div></div>
-      <div class="kpi k3"><div class="lab">Dow Jones</div><div class="val">52,208.06</div><div class="chg pos">+1.2% &#9650;</div><div class="foot">+613.92 pts &middot; Jul 31 ~+0.4% intraday</div></div>
+      <div class="kpi k1"><div class="lab">S&amp;P 500</div><div class="val" id="kpiSPX">7,437.64</div><div class="chg pos" id="kpiSPXchg">+1.7% &#9650;</div><div class="foot">Jul 30 close &middot; Jul 31 ~+0.5% intraday</div></div>
+      <div class="kpi k2"><div class="lab">Nasdaq Composite</div><div class="val" id="kpiNAS">25,122.18</div><div class="chg pos" id="kpiNASchg">+2.8% &#9650;</div><div class="foot">Jul 30 close &middot; Jul 31 ~+0.9% intraday</div></div>
+      <div class="kpi k3"><div class="lab">Dow Jones</div><div class="val" id="kpiDOW">52,208.06</div><div class="chg pos" id="kpiDOWchg">+1.2% &#9650;</div><div class="foot">+613.92 pts &middot; Jul 31 ~+0.4% intraday</div></div>
       <div class="kpi k4"><div class="lab">Fed Funds Rate</div><div class="val">On hold</div><div class="chg neu">3 members dissented for a hike</div><div class="foot">Jul 2026 FOMC: held steady</div></div>
     </section>
 
@@ -628,6 +629,7 @@ const UPCOMING = [
 
 const ALL = [...CANDS, ...UPCOMING];
 let discovered=[];
+let LIVE=null; // intraday prices from prices.json (hosted copy only; refreshed by a GitHub Action)
 const byTicker = t => ALL.find(x=>x.ticker===t) || discovered.find(x=>x.ticker===t);
 
 // Kronos forecasts (experimental ML model output; injected by dashboard_forecast.py). NOT advice.
@@ -715,7 +717,7 @@ function renderTable(){
     <td>${c.fwdPE==null?'&ndash;':c.fwdPE+'x'}</td>
     <td>${c.roe==null?'&ndash;':c.roe+'%'}</td>
     <td>${c.divYield==null?'&ndash;':c.divYield+'%'}</td>
-    <td>${c.price==null?'<span style="color:var(--faint)">'+(c.priceLabel||'&ndash;')+'</span>':'$'+c.price}</td>
+    <td>${(function(){var lp=LIVE&&LIVE.quotes&&LIVE.quotes[c.ticker];if(lp&&lp.price!=null){return '$'+lp.price+(lp.chg!=null?' <span class="kcol '+(lp.chg>=0?'up':'down')+'" style="font-size:10px">'+(lp.chg>=0?'+':'')+lp.chg+'%</span>':'');}return c.price==null?'<span style="color:var(--faint)">'+(c.priceLabel||'&ndash;')+'</span>':'$'+c.price;})()}</td>
     <td>${(function(){var k=kFor(c.ticker);return k?'<span class="kcol '+k.direction+'">'+(k.pct_change>0?'+':'')+k.pct_change+'%</span>':'<span style="color:var(--faint)">&ndash;</span>';})()}</td>
   </tr>`).join("");
 }
@@ -1121,11 +1123,31 @@ function renderCmpNote(){
 }
 function renderCompare(){renderCmpChips();buildCmpChart();renderCmpTable();renderCmpNote();}
 
+/* ---------- live intraday prices (hosted copy only) ---------- */
+function applyLive(){
+  if(!LIVE)return;
+  const map={SPX:"kpiSPX",NASDAQ:"kpiNAS",DOW:"kpiDOW"};
+  for(const k in map){
+    const v=LIVE.indices&&LIVE.indices[k];if(!v||v.level==null)continue;
+    const el=document.getElementById(map[k]);if(el)el.textContent=(+v.level).toLocaleString(undefined,{maximumFractionDigits:2});
+    const ch=document.getElementById(map[k]+"chg");
+    if(ch&&v.chg!=null){ch.textContent=(v.chg>=0?"+":"")+v.chg+"% "+(v.chg>=0?"▲":"▼");ch.className="chg "+(v.chg>=0?"pos":"neg");}
+  }
+  renderTable();
+  const s=document.getElementById("liveStamp");
+  if(s&&LIVE.generated_utc){var d=new Date(LIVE.generated_utc);s.textContent="● Live prices as of "+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})+" · refreshes through the day";s.style.display="block";}
+}
+function fetchLive(){
+  if(!/^https?:/.test(location.protocol))return; // file:// share/offline copy keeps its baked snapshot
+  fetch("prices.json?t="+Date.now()).then(r=>r.ok?r.json():null).then(d=>{if(d){LIVE=d;applyLive();}}).catch(()=>{});
+}
+
 /* ---------- init ---------- */
 document.getElementById("upCnt").textContent=UPCOMING.length;
 saveWL();renderCards();renderTable();renderWL();buildCharts();
 fillAddSelects();renderPlan();
 setRisk("Moderate");renderDiscover();renderCompare();
+fetchLive();setInterval(fetchLive,300000);
 </script>
 </body>
 </html>
